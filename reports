@@ -1,1 +1,95 @@
-Paste your written analysis here.
+# Fitbit User Clustering and Sleep Prediction
+
+## Project Overview
+
+This project analyzes Fitbit tracker data to uncover behavioral patterns related to physical activity, sedentary time, and sleep. Using clustering techniques, we segment users into distinct behavior-based groups. Additionally, we apply linear regression to examine how activity and sedentary behavior relate to sleep duration.
+
+---
+
+## Data Summary
+
+**Source:** [Fitbit Fitness Tracker Data on Kaggle](https://www.kaggle.com/datasets/arashnic/fitbit)
+
+The dataset includes detailed activity and sleep records for 30 users over a two-month period. The following files were used:
+
+- `dailyActivity_merged.csv` – Daily step counts, distance, and activity levels
+- `sleepDay_merged.csv` – Total sleep duration in minutes
+
+Note: Heart rate data was excluded from this analysis for performance and relevance reasons in this phase of the project.
+
+---
+
+## Clustering Analysis
+
+We performed k-means clustering to group users based on three features:
+
+- Total daily steps (`TotalSteps`)
+- Total sedentary minutes (`SedentaryMinutes`)
+- Total minutes asleep (`TotalMinutesAsleep`)
+
+### Methodology
+
+1. Selected features were scaled using the `scale()` function.
+2. The optimal number of clusters was determined using the elbow method (`fviz_nbclust()`), with k = 3 selected for modeling.
+3. Clustering was performed using `kmeans()` with 25 random starts for reproducibility.
+
+### Cluster Profiles
+
+| Cluster | Average Steps | Average Sedentary Minutes | Average Sleep Minutes | Number of Users |
+|---------|----------------|----------------------------|------------------------|------------------|
+| 1       | 5,607          | 951                        | 267                    | 62               |
+| 2       | 11,596         | 701                        | 400                    | 205              |
+| 3       | 5,497          | 627                        | 511                    | 146              |
+
+**Interpretation:**
+
+- **Cluster 1** appears to be sedentary and sleep-deprived.
+- **Cluster 2** represents highly active users with moderate sleep.
+- **Cluster 3** includes moderately active individuals who sleep the most.
+
+---
+
+## Sleep Prediction via Linear Regression
+
+A multiple linear regression model was trained to predict `TotalMinutesAsleep` using the following predictors:
+
+- `TotalSteps`
+- `SedentaryMinutes`
+
+### Model Summary
+
+- **Formula:** `TotalMinutesAsleep ~ TotalSteps + SedentaryMinutes`
+- **Intercept:** 783.47
+- **TotalSteps coefficient:** -0.0074
+- **SedentaryMinutes coefficient:** -0.425
+- **R-squared:** 0.3962
+- **RMSE:** 93.65 minutes
+
+### Interpretation
+
+- Higher daily step counts are associated with slightly lower sleep durations.
+- Increased sedentary time is also negatively correlated with sleep.
+- The model explains approximately 40% of the variance in sleep duration.
+
+This suggests that neither physical activity nor sedentary time alone are strong predictors of how much sleep a user gets, highlighting the need for more nuanced behavioral or physiological variables.
+
+---
+
+## Conclusion
+
+This analysis demonstrates the usefulness of clustering techniques in segmenting wearable device users by behavior. It also provides a foundation for predictive modeling using simple activity metrics. Future iterations of this project may include:
+
+- Incorporating heart rate or intensity metrics
+- Using time series data for trend analysis
+- Exploring nonlinear or ensemble regression models
+
+---
+
+## Files and Structure
+
+- `notebooks/fitbit_analysis.R` – Full R script for analysis
+- `reports/regression_summary.md` – Narrative summary of regression results
+- `plots/` – Visualizations: residual plots, cluster plots
+- `results/cluster_profiles.csv` – Exported cluster summary
+
+
