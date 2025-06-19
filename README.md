@@ -45,9 +45,9 @@ This analysis leverages Fitbit tracker data to:
 
 ## Reports & Outputs
 
-- 📄 `regression_summary.md` includes full model interpretation
-- 📈 Residual and prediction plots stored in `/plots/`
-- 📁 Cluster summaries exported to `/results/`
+- `regression_summary.md` includes full model interpretation
+- Residual and prediction plots stored in `/plots/`
+- Cluster summaries exported to `/results/`
 
 ---
 
@@ -67,6 +67,6 @@ Belhaven University
 
 ---
 
-## 📜 License
+## License
 
 This project is open source under the [MIT License](LICENSE).
