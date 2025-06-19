@@ -1,1 +1,140 @@
-Paste your notebook or code here.
+# Load required libraries
+library(knitr)
+library(kableEtra)
+library(tidyverse)
+library(lubridate)
+library(cluster)
+library(factoextra)
+library(caret)
+
+# Load datasets
+activity <- read_csv("dailyActivity_merged.csv")
+sleep <- read_csv("sleepDay_merged.csv")
+
+# Convert date columns to Date type
+activity <- activity %>% mutate(ActivityDate = mdy(ActivityDate))
+sleep <- sleep %>% mutate(SleepDay = mdy_hms(SleepDay),
+                          SleepDate = as_date(SleepDay))
+
+# Merge on Id and Date
+merged <- inner_join(activity, sleep, by = c("Id", "ActivityDate" = "SleepDate"))
+
+########
+
+# Clustering Users Based on Behaviors
+
+########
+
+# Select features for clustering
+cluster_data <- merged %>%
+  select(TotalSteps, SedentaryMinutes, TotalMinutesAsleep) %>%
+  drop_na()
+
+# Scale features
+cluster_data_scaled <- scale(cluster_data)
+
+# Determine optimal number of clusters (elbow method)
+fviz_nbclust(cluster_data_scaled, kmeans, method = "wss")
+
+# Apply k-means clustering with k = 3 (or your choice based on elbow plot)
+set.seed(42)
+kmeans_model <- kmeans(cluster_data_scaled, centers = 3, nstart = 25)
+
+# Add cluster labels to data
+clustered <- cluster_data %>%
+  mutate(Cluster = as.factor(kmeans_model$cluster))
+
+# Visualize clusters
+fviz_cluster(kmeans_model, data = cluster_data_scaled)
+
+
+# Summarize cluster profiles: average steps, sedentary minutes, and sleep by cluster
+cluster_profiles <- clustered %>%
+  group_by(Cluster) %>%
+  summarise(
+    AvgSteps = mean(TotalSteps, na.rm = TRUE),
+    AvgSedentary = mean(SedentaryMinutes, na.rm = TRUE),
+    AvgSleep = mean(TotalMinutesAsleep, na.rm = TRUE),
+    Count = n()
+  )
+
+# Print the cluster profile summary
+print(cluster_profiles)
+
+# Nicely format the cluster profiles table
+cluster_profiles %>%
+  arrange(Cluster) %>%
+  kable(caption = "User Cluster Profiles Based on Activity and Sleep",
+        col.names = c("Cluster", "Avg Steps", "Avg Sedentary (min)", "Avg Sleep (min)", "Users"),
+        digits = 1,
+        align = "c") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
+
+########
+
+# Predict Sleep Duration Using Activity Data
+
+########
+
+# Prepare dataset
+model_data <- merged %>%
+  select(TotalSteps, SedentaryMinutes, TotalMinutesAsleep) %>%
+  drop_na()
+
+# Train/test split
+set.seed(42)
+train_index <- createDataPartition(model_data$TotalMinutesAsleep, p = 0.8, list = FALSE)
+train_data <- model_data[train_index, ]
+test_data  <- model_data[-train_index, ]
+
+# Train linear regression model
+model <- lm(TotalMinutesAsleep ~ TotalSteps + SedentaryMinutes, data = train_data)
+
+# Predict on test set
+predictions <- predict(model, test_data)
+
+# Check lengths match
+length(predictions)       # should be ~20% of total rows
+nrow(test_data)           # should be same number
+
+# Safely compute residuals
+residuals <- test_data$TotalMinutesAsleep - predictions
+
+# Combine into a new dataframe for plotting
+results_df <- data.frame(
+  Actual = test_data$TotalMinutesAsleep,
+  Predicted = predictions,
+  Residuals = residuals
+)
+
+
+# Evaluate performance
+mse <- mean((test_data$TotalMinutesAsleep - predictions)^2)
+rmse <- sqrt(mse)
+
+# Output results
+summary(model)
+cat("RMSE on test set:", round(rmse, 2), "minutes\n")
+
+
+---
+  
+  ## **Plot Residuals and Predicted vs Actual Values in R**
+  
+  
+# Residual plot
+residuals <- test_data$TotalMinutesAsleep - predictions
+ggplot(data.frame(Predicted = predictions, Residuals = residuals), aes(x = Predicted, y = Residuals)) +
+  geom_point(alpha = 0.6, color = "#2c3e50") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Residual Plot", x = "Predicted Sleep (minutes)", y = "Residuals") +
+  theme_minimal()
+
+# Predicted vs. Actual plot
+ggplot(data.frame(Predicted = predictions, Actual = test_data$TotalMinutesAsleep), 
+       aes(x = Actual, y = Predicted)) +
+  geom_point(alpha = 0.6, color = "#27ae60") +
+  geom_abline(slope = 1, intercept = 0, color = "blue", linetype = "dashed") +
+  labs(title = "Predicted vs. Actual Sleep Duration", x = "Actual Sleep (minutes)", y = "Predicted Sleep (minutes)") +
+  theme_minimal()
+
